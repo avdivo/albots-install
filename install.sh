@@ -9,13 +9,18 @@
 # Аргументы — те же, что у deploy/install.sh: local | user@host[:port] [dir] [port]
 #   local        — установка на эту машину (каталог ~/albots, консоль 127.0.0.1:8003)
 #   user@host    — установка по SSH на сервер (каталог /opt/albots)
-# Секреты установки создаются ЛОКАЛЬНО (~/.albots/install-secrets.env), из GitHub
-# не приходят. Повторный запуск = обновление.
+# Секреты установки — единый файл <каталог установки>/install-secrets.env
+# (создаётся установщиком при первом запуске), из GitHub не приходят.
+# Повторный запуск = обновление.
 set -euo pipefail
 
 REPO="${ALBOTS_REPO:-avdivo/bot_platform}"
 BRANCH="${ALBOTS_BRANCH:-main}"
 
+# Ключ для скачивания: env → новый файл секретов (~/albots) → старый (~/.albots)
+if [[ -z "${GITHUB_TOKEN:-}" && -f "$HOME/albots/install-secrets.env" ]]; then
+  GITHUB_TOKEN="$(grep -oP '^GITHUB_TOKEN=\K.*' "$HOME/albots/install-secrets.env" 2>/dev/null || true)"
+fi
 if [[ -z "${GITHUB_TOKEN:-}" && -f "$HOME/.albots/install-secrets.env" ]]; then
   GITHUB_TOKEN="$(grep -oP '^GITHUB_TOKEN=\K.*' "$HOME/.albots/install-secrets.env" 2>/dev/null || true)"
 fi
