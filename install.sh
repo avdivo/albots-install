@@ -3,22 +3,35 @@
 # Скачивает приватный установщик из avdivo/bot_platform и запускает его.
 #
 # Использование (ключ нужен один раз, read-only PAT на чтение приватного репо):
-#   cd <папка>                 # сюда кладём install-secrets.env
+#   cd <папка>                 # сюда кладём файл настроек (install-secrets.env
+#                              #   или единственный *.env)
 #   curl -fsSL https://raw.githubusercontent.com/avdivo/albots-install/main/install.sh | bash
 #
-# Папка запуска = «корень развёртывания»: в ней лежит install-secrets.env, а
+# Папка запуска = «корень развёртывания»: в ней лежит файл настроек, а
 # установка идёт в её подкаталог albots/ (albots1, …). Одинаково на сервере и на
-# локальной машине. GITHUB_TOKEN берётся из окружения или из ./install-secrets.env.
+# локальной машине. GITHUB_TOKEN берётся из окружения или из файла настроек.
 # Аргументы пробрасываются в deploy/install.sh:
-#   --clean — переставить заново;  --new — отдельная копия рядом.
+#   --clean — переставить заново.
 set -euo pipefail
 
 REPO="${ALBOTS_REPO:-avdivo/bot_platform}"
 BRANCH="${ALBOTS_BRANCH:-main}"
 
-# Ключ для скачивания: окружение → ./install-secrets.env → старые места.
-if [[ -z "${GITHUB_TOKEN:-}" && -f "$PWD/install-secrets.env" ]]; then
-  GITHUB_TOKEN="$(grep -oP '^GITHUB_TOKEN=\K.*' "$PWD/install-secrets.env" 2>/dev/null | tr -d '"' || true)"
+# Ключ для скачивания: окружение → файл настроек (install-secrets.env или
+# единственный *.env в папке запуска) → старые места.
+if [[ -z "${GITHUB_TOKEN:-}" ]]; then
+  _envs=()
+  if [[ -f "$PWD/install-secrets.env" ]]; then
+    _envs+=("$PWD/install-secrets.env")
+  else
+    for _f in "$PWD"/*.env; do
+      [[ -f "$_f" ]] && _envs+=("$_f")
+    done
+  fi
+  if ((${#_envs[@]} == 1)); then
+    GITHUB_TOKEN="$(grep -oP '^GITHUB_TOKEN=\K.*' "${_envs[0]}" 2>/dev/null | tr -d '"' || true)"
+  fi
+  unset _envs _f
 fi
 if [[ -z "${GITHUB_TOKEN:-}" && -f "$HOME/albots/install-secrets.env" ]]; then
   GITHUB_TOKEN="$(grep -oP '^GITHUB_TOKEN=\K.*' "$HOME/albots/install-secrets.env" 2>/dev/null | tr -d '"' || true)"
